@@ -1,0 +1,16 @@
+{
+    "searchMethod": "re",
+    "caseSensitive": false,
+    "compKeys": ["SeriesNumber", "AcquisitionTime", "SeriesDescription"],
+    "dcm2niixOptions" :"-1 -a y -t y -b y -ba y -z y -f '%3s_%f_%p_%t'",
+    "descriptions": [
+      {
+        "dataType": "anat",
+        "modalityLabel": "T1w",
+        "customLabels": "iso08",
+        "criteria": {
+          "SeriesDescription": ".*t1_mpr_32ch_iso_0\\.8$"
+        }
+      }
+    ]
+}

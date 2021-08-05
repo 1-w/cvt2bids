@@ -1,0 +1,20 @@
+name: cvt2bids
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ipython
+  - setuptools
+  - numpy
+  - ipykernel
+  - python=3.8
+  - pandas
+  - dcm2niix==1.0.20201102
+  - pydicom
+  - pip
+  - pip:
+      - nibabel
+      - pydeface
+      - setuptools-scm
+      - python-dotenv
+
