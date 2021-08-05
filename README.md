@@ -12,6 +12,13 @@ Depends on a modified Version of [dcm2bids](https://github.com/1-w/Dcm2Bids) and
 
 dcm2niix v1.0.20201102
 
+Best to work in a virtual env, for example:
+
+```
+conda env create -f environment.yml
+conda activate cvt2bids
+```
+
 ---
 
 ## Install
