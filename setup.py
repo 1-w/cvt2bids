@@ -66,7 +66,7 @@ if __name__ == "__main__":
         install_requires=[
           'future>=0.17.1',
           'numpy',
-          'pydeface',
+          'pydeface@git+https://github.com/1-w/pydeface.git',
           'pydicom',
           'nii2dcm@git+https://gitlab.com/lab_tni/projects/nii2dcm.git',
           'dcm2bids@git+https://github.com/1-w/Dcm2Bids.git@nameAsStringBugFix',
