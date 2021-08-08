@@ -7,14 +7,12 @@ dependencies:
   - setuptools
   - numpy
   - ipykernel
-  - python=3.8
+  - python=3
   - pandas
   - dcm2niix==1.0.20201102
   - pydicom
   - pip
   - pip:
       - nibabel
-      - pydeface
       - setuptools-scm
       - python-dotenv
-
