@@ -25,6 +25,7 @@ def find_corresponding_bids(id, df):
     return str(-1)
 
 def start_proc(cmd):
+    print("Running:",cmd)
     proc = subprocess.Popen(cmd)
     proc.wait()
 
@@ -35,6 +36,19 @@ def preproc_ids(df):
         df.lab_id = df.lab_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
     if 'neurorad_id' in df.columns:
         df.neurorad_id = df.neurorad_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
+    if 'folder_id' in df.columns:
+        df.folder_id = df.folder_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
+    return df
+
+def ids2string(df):
+    if 'osepa_id' in df.columns:
+        df.osepa_id = df.osepa_id.apply(lambda x: ','.join(x))
+    if 'lab_id' in df.columns:
+        df.lab_id = df.lab_id.apply(lambda x: ','.join(x))
+    if 'neurorad_id' in df.columns:
+        df.neurorad_id = df.neurorad_id.apply(lambda x: ','.join(x))
+    if 'folder_id' in df.columns:
+        df.folder_id = df.folder_id.apply(lambda x: ','.join(x))
     return df
 
 def convert2abs(path):
@@ -144,10 +158,12 @@ def main():
 
     dicom_path = convert2abs(args.dicom_path)
     out_path = convert2abs(args.out_path)
+    os.makedirs(out_path,exist_ok=True)
+
     config_file_path = convert2abs(args.config_path)
 
     if args.participants_file:
-        participants_file = args.participants_file
+        participants_file = convert2abs(args.participants_file)
         participants = pd.read_csv(participants_file,sep='\t',dtype=object)
     else:
         if os.path.isfile(opj(out_path, 'participants.tsv')):
@@ -160,7 +176,8 @@ def main():
             participants = pd.DataFrame(columns=['participant_id','folder_id'],dtype=object)
 
     if 'folder_id' not in participants.columns:
-        participants['folder_id'] = []
+        print("Adding 'folder_id' column...")
+        participants['folder_id'] = ''
 
     if args.id:
         if args.id in participants.participant_id:
@@ -182,10 +199,12 @@ def main():
     bids_id_count = get_max_bids_id(participants)
 
     # dcm2nii conversion
-    for f in [name for name in os.listdir(dicom_path) if os.path.isdir(opj(dicom_path,name))]:
+    for f in [name for name in os.listdir(dicom_path) if os.path.isdir(opj(dicom_path,name,subfolder))]:
         bids_id = find_corresponding_bids(f, participants)
+            
+        print("Found BIDS ID",bids_id,"for file",f)
         if bids_id == '-1':
-            bids_id = 'sub-'+ str(bids_id_count).zfill(5)
+            bids_id = 'sub-'+ str(bids_id_count+1).zfill(5)
             bids_id_count += 1
             print('Could not find entry for subject',f)
             print('Creating new subject',bids_id)
@@ -194,6 +213,8 @@ def main():
             info['participant_id'] = bids_id
             info['folder_id'] = f
             participants = participants.append(info,ignore_index=True)
+        else:
+            participants[participants.participant_id == bids_id].folder_id = f
 
         cmd = ["dcm2bids","-d",opj(dicom_path,f,subfolder),"-p",bids_id.split('-')[1],"-c",config_file_path,"-o",
             out_path]
@@ -206,12 +227,14 @@ def main():
         print("Running in parallel with",num_cpus,"cores.")
         p = multiprocessing.Pool(num_cpus)
         p.map(start_proc, commands)
+        print("Finished!")
     else:
         for cmd in commands:
             p = subprocess.Popen(cmd)
             p.wait()
 
     #save participants.tsv back to output directory
+    participants = ids2string(participants)
     participants.to_csv(opj(out_path,'participants.tsv'),sep='\t',index=False)
 
 

@@ -69,7 +69,7 @@ if __name__ == "__main__":
           'pydeface@git+https://github.com/1-w/pydeface.git',
           'pydicom',
           'nii2dcm@git+https://gitlab.com/lab_tni/projects/nii2dcm.git',
-          'dcm2bids@git+https://github.com/1-w/Dcm2Bids.git@nameAsStringBugFix',
+          'dcm2bids@git+https://github.com/1-w/Dcm2Bids.git@3.0.0',
           'pandas',
           # TODO: drop this when py3.6 is end-of-life
           'importlib_resources ; python_version<"3.7"'
