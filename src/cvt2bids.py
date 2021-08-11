@@ -88,7 +88,7 @@ def extract_participant_info(dcm_path):
         subject_info[key] = []
 
     for f in os.listdir(dcm_path):
-        dcm_file = glob.glob(opj(dcm_path,f)+'/*.dcm')[0]
+        dcm_file = glob.glob(opj(dcm_path,f)+'/*')[0]
         if dcm_file:
             dcm = pydi.dcmread(dcm_file)
             for key in infotags:
@@ -179,6 +179,7 @@ def main():
         print("Adding 'folder_id' column...")
         participants['folder_id'] = ''
 
+    subject = None
     if args.id:
         if args.id in participants.participant_id:
             subject = participants[participants.participant_id == args.id].iloc[0]
@@ -190,7 +191,7 @@ def main():
             dicom_path = opj(dicom_path,'../')
             subject = participants[participants.participant_id == args.id].iloc[0]
 
-    print(subject)
+        print(subject)
     participants = preproc_ids(participants)
 
     subfolder = args.subfolder
