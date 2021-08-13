@@ -59,14 +59,14 @@ def convert2abs(path):
 
 def get_max_bids_id(df):
     ids = df.participant_id.apply(lambda x: int(x.split('-')[1]))
-    if len(ids) ==0:
-        return 1
+    if len(ids) == 0:
+        return 0
     
     max_id = np.max(np.array(ids))
     if max_id >= 1:
         return max_id
     else:
-        return 1
+        return 0
 
 def extract_participant_info(dcm_path):
     #return dict with participant info from dcm header
@@ -220,7 +220,7 @@ def main():
 
                 info = extract_participant_info(opj(dicom_path,f,subfolder))
                 info['participant_id'] = bids_id
-                info['folder_id'] = f
+                info['folder_id'] = [f]
                 participants = participants.append(info,ignore_index=True)
             else:
                 participants[participants.participant_id == bids_id].iloc[0].folder_id.append(f)
