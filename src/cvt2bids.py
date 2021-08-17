@@ -10,16 +10,17 @@ from os.path import join as opj
 import argparse
 import pydicom as pydi
 import glob
+from pkg_resources import require
 
 import dcm2bids
 
 #%%
-def find_corresponding_bids(id, df):
-    id_names = [x for x in df.columns if x in ['osepa_id', 'lab_id','neurorad_id','folder_id']]
+def find_corresponding_bids(id_, df):
+    id_names = [x for x in df.columns if x in ['participant_id','osepa_id', 'lab_id','neurorad_id','folder_id']]
     
-    for i,r in df.iterrows():
+    for _,r in df.iterrows():
         for m in [r[id_name] for id_name in id_names]:
-            if str(id) in m: 
+            if str(id_) in m: 
                 return r.participant_id
     #print(id)
     return str(-1)
@@ -29,15 +30,24 @@ def start_proc(cmd):
     proc = subprocess.Popen(cmd)
     proc.wait()
 
+def conv2idArray(s):
+    try:
+        idAr = eval(s)
+        if type(idAr) != list:
+            idAr = [str(idAr)]
+        return idAr
+    except:
+        return [t.strip() for t in str(s).split(',')] if s is not np.nan else []
+
 def preproc_ids(df):
     if 'osepa_id' in df.columns:
-        df.osepa_id = df.osepa_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
+        df.osepa_id = df.osepa_id.apply(lambda x: conv2idArray(x))
     if 'lab_id' in df.columns:
-        df.lab_id = df.lab_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
+        df.lab_id = df.lab_id.apply(lambda x: conv2idArray(x))
     if 'neurorad_id' in df.columns:
-        df.neurorad_id = df.neurorad_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
+        df.neurorad_id = df.neurorad_id.apply(lambda x: conv2idArray(x))
     if 'folder_id' in df.columns:
-        df.folder_id = df.folder_id.apply(lambda x: [t.strip() for t in str(x).split(',')] if x is not np.nan else [])
+        df.folder_id = df.folder_id.apply(lambda x: conv2idArray(x))
     return df
 
 def ids2string(df):
@@ -99,18 +109,22 @@ def extract_participant_info(dcm_path):
 
     returnDict = {}
     for key in subject_info:
+        print(key, subject_info[key])
         returnDict[key] = ','.join(subject_info[key])
             
     return returnDict
 
-#%%
-def get_arguments():
+#%% prepare conversion 
+def main():
     """Load arguments for main"""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=""" Convert DICOMS to NIFTIS and back, with possible defacing and header annonymization {}""".format( '0.1.0' #TODO
-        ), epilog=""" Documentation not yet at https://github.com/1-w/cvt2bids """, )
-
+        description=""" Convert DICOMS to NIFTIS and back, with possible defacing and header annonymization {}""".format( require("dcm2bids")[0].version #TODO
+        ), epilog=""" Documentation not yet at https://github.com/1-w/cvt2bids """)
+    
+    parser.add_argument('--version', action='version',
+                        help='Display verison.', version=require('cvt2bids')[0].version)
+    
     parser.add_argument(
         "-d", "--dicom_path", required=True, help="BIDS conform dir containing all relevant niftis. participants.tsv needs to allow a mapping between the files in sourcedata and the participant_ids."
     )
@@ -148,13 +162,21 @@ def get_arguments():
         control whether multi- or singlecore processing should be used""",
     )
 
-    args = parser.parse_args()
-    return args
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return 0
 
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError:
+            parser.print_usage()
+            exit(-1)
 
-#%% prepare conversion 
-def main():
-    args = get_arguments()
+    #args =parser.parse_args(args, namespace = v)
+
+    welcome_str = 'cvt2bids ' + require('cvt2bids')[0].version
+    welcome_decor = '-' * len(welcome_str)
+    print(welcome_decor + '\n' + welcome_str + '\n' + welcome_decor)
 
     dicom_path = convert2abs(args.dicom_path)
     out_path = convert2abs(args.out_path)
@@ -176,22 +198,21 @@ def main():
             participants = pd.DataFrame(columns=['participant_id','folder_id'],dtype=object)
 
     if 'folder_id' not in participants.columns:
-        print("Adding 'folder_id' column...")
         participants['folder_id'] = ''
 
     subject = None
     if args.id:
-        if args.id in participants.participant_id:
+        if args.id in participants.participant_id.values:
             subject = participants[participants.participant_id == args.id].iloc[0]
 
         else:
+            print('Did not find participant_id',args.id)
             # the whole folder becomes the id, since an id is provided but not found in participants.tsv
             folder_id = os.path.basename(dicom_path)
             participants.append( {'participan_id':args.id, 'folder_id':folder_id},ignore_index=True)
             dicom_path = opj(dicom_path,'../')
             subject = participants[participants.participant_id == args.id].iloc[0]
 
-        print(subject)
     participants = preproc_ids(participants)
 
     subfolder = args.subfolder
@@ -211,7 +232,6 @@ def main():
                 commandStrings.append(' '.join(cmd))
                 commands.append(cmd)
         else:
-            print("Found BIDS ID",bids_id,"for file",f)
             if bids_id == '-1':
                 bids_id = 'sub-'+ str(bids_id_count+1).zfill(5)
                 bids_id_count += 1
@@ -223,6 +243,7 @@ def main():
                 info['folder_id'] = [f]
                 participants = participants.append(info,ignore_index=True)
             else:
+                print("Found BIDS ID",bids_id,"for file",f)
                 participants[participants.participant_id == bids_id].iloc[0].folder_id.append(f)
 
             cmd = ["dcm2bids","-d",opj(dicom_path,f,subfolder),"-p",bids_id.split('-')[1],"-c",config_file_path,"-o",
@@ -241,11 +262,12 @@ def main():
         for cmd in commands:
             p = subprocess.Popen(cmd)
             p.wait()
+        print("Finished!")
+
 
     #save participants.tsv back to output directory
     participants = ids2string(participants)
     participants.to_csv(opj(out_path,'participants.tsv'),sep='\t',index=False)
-
 
     # nii2dcm conversion
     if not args.dcm:

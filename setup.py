@@ -19,7 +19,7 @@ def install_requires():
 
 #_VERSION = load_version()
 DISTNAME = "cvt2bids"
-VERSION = "0.1.0" #_VERSION["__version__"] TODO
+VERSION = "0.8.0" #_VERSION["__version__"] TODO
 ENTRY_POINTS = {
     "console_scripts": [
         "cvt2bids = src.cvt2bids:main",
