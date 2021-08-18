@@ -241,6 +241,9 @@ def main():
                 info = extract_participant_info(opj(dicom_path,f,subfolder))
                 info['participant_id'] = bids_id
                 info['folder_id'] = [f]
+                info['osepa_id'] = []
+                info['lab_id'] = []
+                info['neurorad_id'] = []
                 participants = participants.append(info,ignore_index=True)
             else:
                 print("Found BIDS ID",bids_id,"for file",f)

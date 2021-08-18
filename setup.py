@@ -9,17 +9,17 @@ from setuptools import setup, find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-def install_requires():
-    """Get list of required modules"""
-    required = []
-    for module, meta in _VERSION["REQUIRED_MODULE_METADATA"]:
-        required.append("{}>={}".format(module, meta["min_version"]))
-    return required
+# def install_requires():
+#     """Get list of required modules"""
+#     required = []
+#     for module, meta in _VERSION["REQUIRED_MODULE_METADATA"]:
+#         required.append("{}>={}".format(module, meta["min_version"]))
+#     return required
 
 
 #_VERSION = load_version()
 DISTNAME = "cvt2bids"
-VERSION = "0.8.0" #_VERSION["__version__"] TODO
+VERSION = "0.9.0" #_VERSION["__version__"] TODO
 ENTRY_POINTS = {
     "console_scripts": [
         "cvt2bids = src.cvt2bids:main",
