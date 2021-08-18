@@ -19,7 +19,7 @@ def read(fname):
 
 #_VERSION = load_version()
 DISTNAME = "cvt2bids"
-VERSION = "0.9.0" #_VERSION["__version__"] TODO
+VERSION = "0.9.1"
 ENTRY_POINTS = {
     "console_scripts": [
         "cvt2bids = src.cvt2bids:main",
@@ -67,8 +67,8 @@ if __name__ == "__main__":
           'future>=0.17.1',
           'numpy',
           'pydicom',
-          'nii2dcm @ git+https://gitlab.com/lab_tni/projects/nii2dcm.git',
-          'dcm2bids @ git+https://github.com/1-w/Dcm2Bids.git@3.0.0#egg=dcm2bids',
+          'nii2dcm @ git+https://gitlab.com/lab_tni/projects/nii2dcm.git@main#egg=nii2dcm',
+          'dcm2bids @ git+https://github.com/1-w/Dcm2Bids.git@master#egg=dcm2bids',
           'pandas',
           # TODO: drop this when py3.6 is end-of-life
           'importlib_resources ; python_version<"3.7"'
