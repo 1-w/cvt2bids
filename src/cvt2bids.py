@@ -1,6 +1,5 @@
 #%%
 import os
-import json
 import sys
 import pandas as pd
 import subprocess
@@ -10,9 +9,7 @@ from os.path import join as opj
 import argparse
 import pydicom as pydi
 import glob
-from pkg_resources import require
-
-import dcm2bids
+from pkg_resources import require 
 
 #%%
 def find_corresponding_bids(id_, df):
@@ -282,5 +279,3 @@ def main():
 # %%
 if __name__ == "__main__":
     sys.exit(main())
-
-# %%
