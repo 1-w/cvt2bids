@@ -13,12 +13,17 @@ from pkg_resources import require
 
 #%%
 def find_corresponding_bids(id_, df):
-    id_names = [x for x in df.columns if x in ['participant_id','osepa_id', 'lab_id','neurorad_id','folder_id']]
-    
+    id_names = [x for x in df.columns if x in ['osepa_id', 'lab_id','neurorad_id','folder_id']]
+
     for _,r in df.iterrows():
         for m in [r[id_name] for id_name in id_names]:
-            if str(id_) in m: 
+            if str(id_).strip() in m:
                 return r.participant_id
+
+    for _,r in df.iterrows():
+        if str(id_).strip() == str(r.participant_id):
+            return r.participant_id
+
     #print(id)
     return str(-1)
 
@@ -232,7 +237,7 @@ def main():
             if bids_id == '-1':
                 bids_id = 'sub-'+ str(bids_id_count+1).zfill(5)
                 bids_id_count += 1
-                print('Could not find entry for subject',f)
+                print('Could not find entry for subject',str(f))
                 print('Creating new subject',bids_id)
 
                 info = extract_participant_info(opj(dicom_path,f,subfolder))
@@ -257,12 +262,11 @@ def main():
         print("Running in parallel with",num_cpus,"cores.")
         p = multiprocessing.Pool(num_cpus)
         p.map(start_proc, commands)
-        print("Finished!")
     else:
         for cmd in commands:
             p = subprocess.Popen(cmd)
             p.wait()
-        print("Finished!")
+    print("Finished!")
 
 
     #save participants.tsv back to output directory
@@ -274,8 +278,7 @@ def main():
         return
 
     #convert niftis back to dicoms
-    
-    
 # %%
 if __name__ == "__main__":
     sys.exit(main())
+# %%
