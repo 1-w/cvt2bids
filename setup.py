@@ -60,18 +60,16 @@ if __name__ == "__main__":
         version=VERSION,
         packages=find_packages(exclude=['data', 'figures', 'output', 'notebooks', 'build']),
         entry_points=ENTRY_POINTS,
-        python_requires=">=3.6",
+        python_requires=">=3.7",
         use_scm_version=True,
         setup_requires=['setuptools_scm'],
         install_requires=[
           'future>=0.17.1',
           'numpy',
           'pydicom',
-          'nii2dcm @ git+https://gitlab.com/lab_tni/projects/nii2dcm.git@main#egg=nii2dcm',
-          'dcm2bids @ git+https://github.com/1-w/Dcm2Bids.git@master#egg=dcm2bids',
+          'nii2dcm',
+          'dcm2bids',
           'pandas',
-          # TODO: drop this when py3.6 is end-of-life
-          'importlib_resources ; python_version<"3.7"'
         ],
         include_package_data=True,
         author=AUTHOR,
