@@ -264,8 +264,7 @@ def main():
         p.map(start_proc, commands)
     else:
         for cmd in commands:
-            p = subprocess.Popen(cmd)
-            p.wait()
+            start_proc(cmd)
     print("Finished!")
 
 
