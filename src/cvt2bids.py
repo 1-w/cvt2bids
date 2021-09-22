@@ -276,7 +276,7 @@ def main():
     if not args.dcm:
         return
 
-    #convert niftis back to dicoms
+    
 # %%
 if __name__ == "__main__":
     sys.exit(main())
