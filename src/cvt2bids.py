@@ -98,8 +98,8 @@ def extract_participant_info(dcm_path):
 
     for key in infotags:
         subject_info[key] = []
-
     for f in os.listdir(dcm_path):
+        print(opj(dcm_path,f))
         dcm_file = glob.glob(opj(dcm_path,f)+'/*')[0]
         if dcm_file:
             dcm = pydi.dcmread(dcm_file)
@@ -217,7 +217,7 @@ def main():
 
     participants = preproc_ids(participants)
 
-    subfolder = args.subfolder
+    names = os.listdir(dicom_path)
 
     commandStrings = []
     commands = []
@@ -226,35 +226,45 @@ def main():
     bids_id_count = get_max_bids_id(participants)
 
     # dcm2nii conversion
-    for f in [name for name in os.listdir(dicom_path) if os.path.isdir(opj(dicom_path,name,subfolder))]:
-        bids_id = find_corresponding_bids(f, participants)
-        if subject is not None:
-            if bids_id in subject.participant_id:
-                cmd = ["dcm2bids","-d",opj(dicom_path,f,subfolder),"-p",bids_id.split('-')[1],"-c",config_file_path,"-o",out_path]
+    for name in names:
+        if args.subfolder == '':
+            subfolders = os.listdir(opj(dicom_path,name))
+        else:
+            subfolders = [args.subfolder]
+        
+        for subfolder in subfolders: 
+            if os.path.isdir(opj(dicom_path,name,subfolder)):
+                f = opj(dicom_path,name,subfolder)
+            else:
+                continue
+            bids_id = find_corresponding_bids(name, participants)
+            if subject is not None:
+                if bids_id in subject.participant_id:
+                    cmd = ["dcm2bids","-d",f,"-p",bids_id.split('-')[1],"-c",config_file_path,"-o",out_path]
+                    commandStrings.append(' '.join(cmd))
+                    commands.append(cmd)
+            else:
+                if bids_id == '-1':
+                    bids_id = 'sub-'+ str(bids_id_count+1).zfill(5)
+                    bids_id_count += 1
+                    print('Could not find entry for subject',str(f))
+                    print('Creating new subject',bids_id)
+
+                    info = extract_participant_info(f)
+                    info['participant_id'] = bids_id
+                    info['folder_id'] = [f]
+                    info['osepa_id'] = []
+                    info['lab_id'] = []
+                    info['neurorad_id'] = []
+                    participants = participants.append(info,ignore_index=True)
+                else:
+                    print("Found BIDS ID",bids_id,"for file",f)
+                    participants[participants.participant_id == bids_id].iloc[0].folder_id.append(f)
+
+                cmd = ["dcm2bids","-d",f,"-p",bids_id.split('-')[1],"-c",config_file_path,"-o",
+                    out_path]
                 commandStrings.append(' '.join(cmd))
                 commands.append(cmd)
-        else:
-            if bids_id == '-1':
-                bids_id = 'sub-'+ str(bids_id_count+1).zfill(5)
-                bids_id_count += 1
-                print('Could not find entry for subject',str(f))
-                print('Creating new subject',bids_id)
-
-                info = extract_participant_info(opj(dicom_path,f,subfolder))
-                info['participant_id'] = bids_id
-                info['folder_id'] = [f]
-                info['osepa_id'] = []
-                info['lab_id'] = []
-                info['neurorad_id'] = []
-                participants = participants.append(info,ignore_index=True)
-            else:
-                print("Found BIDS ID",bids_id,"for file",f)
-                participants[participants.participant_id == bids_id].iloc[0].folder_id.append(f)
-
-            cmd = ["dcm2bids","-d",opj(dicom_path,f,subfolder),"-p",bids_id.split('-')[1],"-c",config_file_path,"-o",
-                out_path]
-            commandStrings.append(' '.join(cmd))
-            commands.append(cmd)
 
     #%% start conversion
     if args.multiproc:
