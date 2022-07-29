@@ -10,6 +10,7 @@ import argparse
 import pydicom as pydi
 import glob
 from pkg_resources import require
+import json
 
 #%%
 def find_corresponding_bids(id_, df):
@@ -78,7 +79,7 @@ def convert2abs(path):
 
 
 def get_max_bids_id(df):
-    ids = df.participant_id.apply(lambda x: int(x.split("-")[1]))
+    ids = df.participant_id.apply(lambda x: int(x.split("-")[1][-5:]))
     if len(ids) == 0:
         return 0
 
@@ -324,16 +325,22 @@ def main():
                 # info = extract_participant_info(fname)
                 info = {}
                 info["participant_id"] = bids_id
-                info["folder_id"] = [fname]
+                info["folder_id"] = [name]
                 info["osepa_id"] = []
                 info["lab_id"] = []
                 info["neurorad_id"] = []
                 participants = participants.append(info, ignore_index=True)
             else:
                 print("Found BIDS ID", bids_id, "for file", fname)
-                participants[participants.participant_id == bids_id].iloc[
-                    0
-                ].folder_id.append(fname)
+                if (
+                    name
+                    not in participants[participants.participant_id == bids_id]
+                    .iloc[0]
+                    .folder_id
+                ):
+                    participants[participants.participant_id == bids_id].iloc[
+                        0
+                    ].folder_id.append(name)
 
             cmd = [
                 "dcm2bids",
@@ -362,6 +369,45 @@ def main():
 
     # save participants.tsv back to output directory
     participants = ids2string(participants)
+
+    fields = [
+        "PatientName",
+        "PatientID",
+        "PatientBirthDate",
+        "PatientSex",
+        "AcquisitionDateTime",
+        "DeviceSerialNumber",
+    ]
+    # populate with additional info
+
+    additional_infos = []
+
+    for pat in participants.participant_id:
+        info = {}
+        json_sidecars = glob.glob(opj(out_path, f"{pat}/anat/*.json"))
+        for field in fields:
+            info[field] = []
+        for js in json_sidecars:
+            print("found sidecar", js)
+            with open(js) as jf:
+                data = json.load(jf)
+            for field in fields:
+                tmpvar = data[field]
+                if field == "AcquisitionDateTime":
+                    tmpvar = tmpvar.split("T")[0]
+                if tmpvar not in info[field]:
+                    info[field].append(tmpvar)
+
+        for field in fields:
+            info[field] = ";".join(info[field])
+
+        additional_infos.append({k: t for k, t in info.items()})
+
+    df = pd.DataFrame.from_dict(additional_infos)
+
+    for field in fields:
+        participants[field] = df[field]
+
     participants.to_csv(opj(out_path, "participants.tsv"), sep="\t", index=False)
 
     # nii2dcm conversion
