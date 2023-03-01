@@ -15,7 +15,7 @@ import json
 #%%
 def find_corresponding_bids(id_, df):
     id_names = [
-        x for x in df.columns if x in ["osepa_id", "lab_id", "neurorad_id", "folder_id"]
+        x for x in df.columns if x in ["osepa_id", "lab_id", "neurorad_id", "dcm_header_id"]
     ]
 
     for _, r in df.iterrows():
@@ -54,8 +54,8 @@ def preproc_ids(df):
         df.lab_id = df.lab_id.apply(lambda x: conv2idArray(x))
     if "neurorad_id" in df.columns:
         df.neurorad_id = df.neurorad_id.apply(lambda x: conv2idArray(x))
-    if "folder_id" in df.columns:
-        df.folder_id = df.folder_id.apply(lambda x: conv2idArray(x))
+    if "dcm_header_id" in df.columns:
+        df.dcm_header_id = df.dcm_header_id.apply(lambda x: conv2idArray(x))
     return df
 
 
@@ -66,8 +66,8 @@ def ids2string(df):
         df.lab_id = df.lab_id.apply(lambda x: ",".join(x))
     if "neurorad_id" in df.columns:
         df.neurorad_id = df.neurorad_id.apply(lambda x: ",".join(x))
-    if "folder_id" in df.columns:
-        df.folder_id = df.folder_id.apply(lambda x: ",".join(x))
+    if "dcm_header_id" in df.columns:
+        df.dcm_header_id = df.dcm_header_id.apply(lambda x: ",".join(x))
     return df
 
 
@@ -91,10 +91,12 @@ def get_max_bids_id(df):
 
 
 def extract_participant_info(dcm_path):
+    if not os.path.isfile(dcm_path):
+        raise ValueError
     # return dict with participant info from dcm header
     infotags = {
         "institution_name": ("0x0008", "0x0080"),
-        #'acquisition_date':("0x0008","0x0022") ,
+        # 'acquisition_date':("0x0008","0x0022"),
         "name": ("0x0010", "0x0010"),
         "id": ("0x0010", "0x0020"),
         "dob": ("0x0010", "0x0030"),
@@ -102,7 +104,7 @@ def extract_participant_info(dcm_path):
         #'other_ids':("0x0010","0x1000"),
         #'other_names':("0x0010","0x1001"),
         #'birth_name':("0x0010","0x1005"),
-        #'age':("0x0010","0x1010"),
+        # 'age':("0x0010","0x1010"),
         "size": ("0x0010", "0x1020"),
         "weight": ("0x0010", "0x1030"),
     }
@@ -110,22 +112,14 @@ def extract_participant_info(dcm_path):
 
     for key in infotags:
         subject_info[key] = []
-    for f in os.listdir(dcm_path):
-        print(opj(dcm_path, f))
-        try:
-            dcm_file = [
-                x for x in glob.glob(opj(dcm_path, f) + "/*") if os.path.isfile(x)
-            ][0]
-        except:
-            print("No dcm files in folder")
+    # for f in os.listdir(dcm_path):
 
-        if dcm_file:
-            dcm = pydi.dcmread(dcm_file)
-            for key in infotags:
-                tg = pydi.tag.Tag(infotags[key])
-                if tg in dcm:
-                    if str(dcm[tg].value) not in subject_info[key]:
-                        subject_info[key].append(str(dcm[tg].value))
+    dcm = pydi.dcmread(dcm_path)
+    for key in infotags:
+        tg = pydi.tag.Tag(infotags[key])
+        if tg in dcm:
+            if str(dcm[tg].value) not in subject_info[key]:
+                subject_info[key].append(str(dcm[tg].value))
 
     returnDict = {}
     for key in subject_info:
@@ -188,13 +182,13 @@ def main():
         help="if participants.tsv file included somewhere other than out_path",
     )
 
-    parser.add_argument(
-        "-s",
-        "--subfolder",
-        default="",
-        required=False,
-        help="if only a specific subfolder in a subjects directory should be searched for DICOMS",
-    )
+    # parser.add_argument(
+    #     "-s",
+    #     "--subfolder",
+    #     default="",
+    #     required=False,
+    #     help="if only a specific subfolder in a subjects directory should be searched for DICOMS",
+    # )
 
     parser.add_argument(
         "-pat",
@@ -255,11 +249,11 @@ def main():
             # generate participants.tsv
             participants_file = opj(out_path, "participants.tsv")
             participants = pd.DataFrame(
-                columns=["participant_id", "folder_id"], dtype=object
+                columns=["participant_id", "dcm_header_id", "folder_path"], dtype=object
             )
 
-    if "folder_id" not in participants.columns:
-        participants["folder_id"] = ""
+    if "dcm_header_id" not in participants.columns:
+        participants["dcm_header_id"] = []
 
     subject = None
     if args.id:
@@ -269,16 +263,14 @@ def main():
         else:
             print("Did not find participant_id", args.id)
             # the whole folder becomes the id, since an id is provided but not found in participants.tsv
-            folder_id = os.path.basename(dicom_path)
+            # folder_id = os.path.basename(dicom_path)
             participants.append(
-                {"participan_id": args.id, "folder_id": folder_id}, ignore_index=True
+                {"participan_id": args.id, "dcm_header_id":[],"folder_path": dicom_path}, ignore_index=True
             )
             dicom_path = opj(dicom_path, "../")
             subject = participants[participants.participant_id == args.id].iloc[0]
 
     participants = preproc_ids(participants)
-
-    names = os.listdir(dicom_path)
 
     commandStrings = []
     commands = []
@@ -287,25 +279,49 @@ def main():
     bids_id_count = get_max_bids_id(participants)
 
     # dcm2nii conversion
-    for name in names:
-        if args.subfolder == "":
-            subfolders = os.listdir(opj(dicom_path, name))
-        else:
-            subfolders = [args.subfolder]
+    for directory, subdirlist, filelist in os.walk(dicom_path):
+        print(directory)
+        # if args.subfolder == "":
+        #     subfolders = os.listdir(opj(dicom_path, name))
+        # else:
+        #     subfolders = [args.subfolder]
 
         # find all subfolders containing dicoms:
 
-        if os.path.isdir(opj(dicom_path, name)):
-            fname = opj(dicom_path, name)
+        conv = False
+        ind = 0
+        print(f"{directory}: Trying to find dcm files...")
+        for i,f in enumerate(filelist):
+            _, ext = os.path.splitext(f)
+            if ext == '.dcm' or ext == '':
+                try:
+                    pydi.dcmread(os.path.join(directory, f))
+                    conv = True
+                    ind = i
+                    print(f"{directory}: Found dcm files!")
+                    break
+                except:
+                    # could not read file as dcm, so continue
+                    continue
+
+        if conv:
+            try:
+                dcm_info = extract_participant_info(os.path.join(directory, filelist[ind]))
+            except:
+                print(os.path.join(directory, filelist[ind]))
+                continue
         else:
+            print(f"{directory}: Did not find dcm files...")
             continue
-        bids_id = find_corresponding_bids(name, participants)
+
+        print(f"{directory}: Searching for bids ID for", dcm_info['id'])
+        bids_id = find_corresponding_bids(dcm_info['id'], participants)
         if subject is not None:
             if bids_id in subject.participant_id:
                 cmd = [
                     "dcm2bids",
                     "-d",
-                    fname,
+                    directory,
                     "-p",
                     bids_id.split("-")[1],
                     "-c",
@@ -319,33 +335,33 @@ def main():
             if bids_id == "-1":
                 bids_id = "sub-" + patho + str(bids_id_count + 1).zfill(5)
                 bids_id_count += 1
-                print("Could not find entry for subject", str(fname))
-                print("Creating new subject", bids_id)
+                print(f"{directory}: Could not find entry for", dcm_info['id'])
+                print(f"{directory}: Creating new subject with BIDS id", bids_id)
 
                 # info = extract_participant_info(fname)
                 info = {}
                 info["participant_id"] = bids_id
-                info["folder_id"] = [name]
                 info["osepa_id"] = []
                 info["lab_id"] = []
                 info["neurorad_id"] = []
+                info["dcm_header_id"] = [dcm_info['id']]
                 participants = participants.append(info, ignore_index=True)
             else:
-                print("Found BIDS ID", bids_id, "for file", fname)
+                print(f"{directory}: Found entry for", dcm_info['id'], bids_id)
                 if (
-                    name
+                    dcm_info['id']
                     not in participants[participants.participant_id == bids_id]
                     .iloc[0]
-                    .folder_id
+                    .dcm_header_id
                 ):
                     participants[participants.participant_id == bids_id].iloc[
                         0
-                    ].folder_id.append(name)
+                    ].dcm_header_id.append(dcm_info['id'])
 
             cmd = [
                 "dcm2bids",
                 "-d",
-                fname,
+                directory,
                 "-p",
                 bids_id.split("-")[1],
                 "-c",
@@ -356,7 +372,16 @@ def main():
             commandStrings.append(" ".join(cmd))
             commands.append(cmd)
 
+
+    # save participants.tsv back to output directory
+    print('Temporary saving participants.tsv to BIDS format... ')
+
+    participants = ids2string(participants)
+    participants.to_csv(opj(out_path, "participants.tsv"), sep="\t", index=False)
+
+
     #%% start conversion
+    print('Starting conversion to BIDS format... ')
     if args.multiproc:
         num_cpus = multiprocessing.cpu_count()
         print("Running in parallel with", num_cpus, "cores.")
@@ -365,10 +390,9 @@ def main():
     else:
         for cmd in commands:
             start_proc(cmd)
-    print("Finished!")
 
-    # save participants.tsv back to output directory
-    participants = ids2string(participants)
+    #
+    print('Final saving participants.tsv to BIDS format... ')
 
     fields = [
         "PatientName",
@@ -409,6 +433,8 @@ def main():
         participants[field] = df[field]
 
     participants.to_csv(opj(out_path, "participants.tsv"), sep="\t", index=False)
+
+    print("Finished!")
 
     # nii2dcm conversion
     if not args.dcm:
