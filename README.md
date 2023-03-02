@@ -51,9 +51,7 @@ optional arguments:
   ```-i ID, --id ID```        Single participant_id. Only this id will be processed from participants.tsv file. If no participants.tsv file is provided, all found DICOMS will be stored under this id
   
   ```-p PARTICIPANTS_FILE, --participants_file PARTICIPANTS_FILE ```if participants.tsv file included somewhere other than out_path
-                        
- ``` -s SUBFOLDER, --subfolder SUBFOLDER ```if only a specific subfolder in a subjects directory should be searched for DICOMS
-  
+                          
   ```--dcm DCM      ```       convert NIFTIS back to DICOMS, options: a = anonymize, d = defaced
  ``` -m, --multiproc   ```    control whether multi- or singlecore processing should be used
 
