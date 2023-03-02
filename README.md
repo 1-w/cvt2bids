@@ -97,3 +97,13 @@ unmatched_sequences = unmatched_sequences[
 #repeat until unmatched_sequences is empty
 ```
 
+Please put the sequences like into the existing config repo like described here:
+https://gitlab.com/lab_tni/projects/lab2bids_configs
+
+More about config creation can also be found here:
+https://unfmontreal.github.io/Dcm2Bids/docs/how-to/create-config-file/
+
+Please note that we use regex matching instead of shell-style pattern matching!
+
+Find more about regex here:
+https://regex101.com/
