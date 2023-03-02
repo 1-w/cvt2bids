@@ -24,8 +24,6 @@ conda activate cvt2bids
 ## Install
 
 ```
-git clone https://github.com/1-w/cvt2bids.git
-cd cvt2bids
 pip install .
 ```
 
