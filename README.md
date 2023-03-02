@@ -57,3 +57,43 @@ optional arguments:
   ```--dcm DCM      ```       convert NIFTIS back to DICOMS, options: a = anonymize, d = defaced
  ``` -m, --multiproc   ```    control whether multi- or singlecore processing should be used
 
+### Workflow
+
+1. Execute command
+
+2. ```cd <output directory>/tmp_dcm2bids/log```
+
+3. ```grep *.log -e "No Pairing" >> all_unpaired.txt```
+
+4. Open python
+
+5. 
+```
+#imports
+import pandas as pd
+import re
+
+#read unpaired sequence list
+df = pd.read_csv(<path to all_unpaired.txt>,header=None)
+
+#clean the list
+df['sequence_names'] = df[0].apply(lambda x: x.split('  <-  ')[1])
+print(df.sequence_names.unique())
+df['sequence_names'] = df['sequence_names'].apply(lambda x: re.sub(r'^[0-9]*_','',x))
+df['sequence_names'] = df['sequence_names'].apply(lambda x: re.sub(r'^[0-9]*.?_','',x))
+df['sequence_names'] = df['sequence_names'].apply(lambda x: re.sub(r'_[0-9]*$','',x))
+
+#only use unique sequence names
+unmatched_sequences = df.sequence_names.unique()
+
+#refine template matching to sequence names
+#add the matched templates to the config file like described below
+
+new_template = r'.*preop_ep2d_diff_b0_p4_17_preop_ep2d_diff_b0_p4.*'
+unmatched_sequences = unmatched_sequences[
+  unmatched_sequences.apply(lambda x: not bool(re.search(new_template,x)) )
+]
+
+#repeat until unmatched_sequences is empty
+```
+
