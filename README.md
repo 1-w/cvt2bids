@@ -51,7 +51,8 @@ optional arguments:
   ```-p PARTICIPANTS_FILE, --participants_file PARTICIPANTS_FILE ```if participants.tsv file included somewhere other than out_path
                           
   ```--dcm DCM      ```       convert NIFTIS back to DICOMS, options: a = anonymize, d = defaced
- ``` -m, --multiproc   ```    control whether multi- or singlecore processing should be used
+
+  ``` -m, --multiproc   ```    control whether multi- or singlecore processing should be used
 
 ### Workflow
 
