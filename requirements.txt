@@ -3,4 +3,3 @@ numpy>=1.21.2
 pydicom>=2.2.0
 pandas>=1.3.2
 git+https://gitlab.com/lab_tni/projects/nii2dcm.git@main#egg=nii2dcm
-git+https://github.com/1-w/Dcm2Bids.git@main#egg=dcm2bids

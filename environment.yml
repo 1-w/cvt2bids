@@ -8,8 +8,9 @@ dependencies:
   - numpy
   - ipykernel
   - python=3
+  - dcm2niix
+  - dcm2bids
   - pandas
-  - dcm2niix==1.0.20201102
   - pydicom
   - pip
   - pip:

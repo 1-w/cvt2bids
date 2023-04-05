@@ -345,7 +345,7 @@ def main():
                 info["lab_id"] = []
                 info["neurorad_id"] = []
                 info["dcm_header_id"] = [dcm_info['id']]
-                participants = participants.append(info, ignore_index=True)
+                participants = participants._append(info, ignore_index=True)
             else:
                 print(f"{directory}: Found entry for", dcm_info['id'], bids_id)
                 if (
@@ -368,6 +368,7 @@ def main():
                 config_file_path,
                 "-o",
                 out_path,
+                "--forceDcm2niix"
             ]
             commandStrings.append(" ".join(cmd))
             commands.append(cmd)
