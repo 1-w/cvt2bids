@@ -31,10 +31,11 @@ def find_corresponding_bids(id_, df):
     return str(-1)
 
 
-def start_proc(cmd):
-    print("Running:", cmd)
-    proc = subprocess.Popen(cmd)
-    proc.wait()
+def start_proc(cmd_list):
+    for cdm in cmd_list:
+        print("Running:", cdm)
+        proc = subprocess.Popen(cdm)
+        proc.wait()
 
 
 def conv2idArray(s):
@@ -205,15 +206,14 @@ def main():
         convert NIFTIS back to DICOMS, options: a = anonymize, d = defaced""",
     )
 
-    # unfortunately not supported currently by dcm2bids/dcm2niix ..
-    
-    # parser.add_argument(
-    #     "-m",
-    #     "--multiproc",
-    #     action="store_true",
-    #     help="""
-    #     control whether multi- or singlecore processing should be used""",
-    # )
+    # unfortunately not supported currently by dcm2bids/dcm2niix .. but we can at least parallelise subjects
+    parser.add_argument(
+        "-m",
+        "--multiproc",
+        action="store_true",
+        help="""
+        control whether multi- or singlecore processing should be used""",
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -276,6 +276,7 @@ def main():
 
     commandStrings = []
     commands = []
+    commands_dict = {}
 
     used_ids = []
     bids_id_count = get_max_bids_id(participants)
@@ -319,6 +320,10 @@ def main():
 
         print(f"{directory}: Searching for bids ID for", dcm_info['id'])
         bids_id = find_corresponding_bids(dcm_info['id'], participants)
+        
+        if bids_id not in commands_dict.keys():
+            commands_dict[bids_id] = []
+        
         session = re.sub(r'[^0-9]', '', dcm_info['acquisition_date'])
         if subject is not None:
             if bids_id in subject.participant_id:
@@ -337,6 +342,7 @@ def main():
                 ]
                 commandStrings.append(" ".join(cmd))
                 commands.append(cmd)
+                commands_dict[bids_id].append(cmd)
         else:
             if bids_id == "-1":
                 bids_id = "sub-" + patho + str(bids_id_count + 1).zfill(5)
@@ -379,6 +385,7 @@ def main():
             ]
             commandStrings.append(" ".join(cmd))
             commands.append(cmd)
+            commands_dict[bids_id].append(cmd)
 
 
     # save participants.tsv back to output directory
@@ -389,14 +396,14 @@ def main():
 
     #%% start conversion
     print('Starting conversion to BIDS format... ')
-    # if args.multiproc:
-    #     num_cpus = multiprocessing.cpu_count()
-    #     print("Running in parallel with", num_cpus, "cores.")
-    #     p = multiprocessing.Pool(min(len(commands), num_cpus))
-    #     p.map(start_proc, commands)
-    # else:
-    for cmd in commands:
-        start_proc(cmd)
+    if args.multiproc:
+        num_cpus = multiprocessing.cpu_count()
+        print("Running in parallel with", num_cpus, "cores.")
+        p = multiprocessing.Pool(min(len(commands_dict), num_cpus))
+        p.map(start_proc, commands_dict.values())
+    else:
+        for cmd in commands:
+            start_proc(cmd)
 
     #
     print('Final saving participants.tsv to BIDS format... ')
