@@ -321,12 +321,13 @@ def main():
         print(f"{directory}: Searching for bids ID for", dcm_info['id'])
         bids_id = find_corresponding_bids(dcm_info['id'], participants)
         
-        if bids_id not in commands_dict.keys():
-            commands_dict[bids_id] = []
-        
         session = re.sub(r'[^0-9]', '', dcm_info['acquisition_date'])
         if subject is not None:
             if bids_id in subject.participant_id:
+
+                if bids_id not in commands_dict.keys():
+                    commands_dict[bids_id] = []
+
                 cmd = [
                     "dcm2bids",
                     "-d",
@@ -369,6 +370,9 @@ def main():
                     participants[participants.participant_id == bids_id].iloc[
                         0
                     ].dcm_header_id.append(dcm_info['id'])
+                
+            if bids_id not in commands_dict.keys():
+                commands_dict[bids_id] = []
 
             cmd = [
                 "dcm2bids",
