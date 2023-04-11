@@ -389,14 +389,14 @@ def main():
 
     #%% start conversion
     print('Starting conversion to BIDS format... ')
-    if args.multiproc:
-        num_cpus = multiprocessing.cpu_count()
-        print("Running in parallel with", num_cpus, "cores.")
-        p = multiprocessing.Pool(min(len(commands), num_cpus))
-        p.map(start_proc, commands)
-    else:
-        for cmd in commands:
-            start_proc(cmd)
+    # if args.multiproc:
+    #     num_cpus = multiprocessing.cpu_count()
+    #     print("Running in parallel with", num_cpus, "cores.")
+    #     p = multiprocessing.Pool(min(len(commands), num_cpus))
+    #     p.map(start_proc, commands)
+    # else:
+    for cmd in commands:
+        start_proc(cmd)
 
     #
     print('Final saving participants.tsv to BIDS format... ')
