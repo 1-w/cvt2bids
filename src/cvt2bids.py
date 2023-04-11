@@ -11,7 +11,7 @@ import pydicom as pydi
 import glob
 from pkg_resources import require
 import json
-
+import re
 #%%
 def find_corresponding_bids(id_, df):
     id_names = [
@@ -96,7 +96,7 @@ def extract_participant_info(dcm_path):
     # return dict with participant info from dcm header
     infotags = {
         "institution_name": ("0x0008", "0x0080"),
-        # 'acquisition_date':("0x0008","0x0022"),
+        'acquisition_date':("0x0008","0x0022"),
         "name": ("0x0010", "0x0010"),
         "id": ("0x0010", "0x0020"),
         "dob": ("0x0010", "0x0030"),
@@ -205,13 +205,15 @@ def main():
         convert NIFTIS back to DICOMS, options: a = anonymize, d = defaced""",
     )
 
-    parser.add_argument(
-        "-m",
-        "--multiproc",
-        action="store_true",
-        help="""
-        control whether multi- or singlecore processing should be used""",
-    )
+    # unfortunately not supported currently by dcm2bids/dcm2niix ..
+    
+    # parser.add_argument(
+    #     "-m",
+    #     "--multiproc",
+    #     action="store_true",
+    #     help="""
+    #     control whether multi- or singlecore processing should be used""",
+    # )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -287,7 +289,6 @@ def main():
         #     subfolders = [args.subfolder]
 
         # find all subfolders containing dicoms:
-
         conv = False
         ind = 0
         print(f"{directory}: Trying to find dcm files...")
@@ -314,8 +315,11 @@ def main():
             print(f"{directory}: Did not find dcm files...")
             continue
 
+        # here only if conv == True -> dcm_info is defined
+
         print(f"{directory}: Searching for bids ID for", dcm_info['id'])
         bids_id = find_corresponding_bids(dcm_info['id'], participants)
+        session = re.sub(r'[^0-9]', '', dcm_info['acquisition_date'])
         if subject is not None:
             if bids_id in subject.participant_id:
                 cmd = [
@@ -328,6 +332,8 @@ def main():
                     config_file_path,
                     "-o",
                     out_path,
+                    "--forceDcm2niix",
+                    "-s", session
                 ]
                 commandStrings.append(" ".join(cmd))
                 commands.append(cmd)
@@ -368,7 +374,8 @@ def main():
                 config_file_path,
                 "-o",
                 out_path,
-                "--forceDcm2niix"
+                "--forceDcm2niix",
+                "-s", session
             ]
             commandStrings.append(" ".join(cmd))
             commands.append(cmd)
@@ -379,7 +386,6 @@ def main():
 
     participants = ids2string(participants)
     participants.to_csv(opj(out_path, "participants.tsv"), sep="\t", index=False)
-
 
     #%% start conversion
     print('Starting conversion to BIDS format... ')
