@@ -1,4 +1,4 @@
-#%%
+# %%
 import os
 import sys
 import pandas as pd
@@ -12,10 +12,14 @@ import glob
 from pkg_resources import require
 import json
 import re
-#%%
+
+
+# %%
 def find_corresponding_bids(id_, df):
     id_names = [
-        x for x in df.columns if x in ["osepa_id", "lab_id", "neurorad_id", "dcm_header_id"]
+        x
+        for x in df.columns
+        if x in ["osepa_id", "lab_id", "neurorad_id", "dcm_header_id"]
     ]
 
     for _, r in df.iterrows():
@@ -97,7 +101,7 @@ def extract_participant_info(dcm_path):
     # return dict with participant info from dcm header
     infotags = {
         "institution_name": ("0x0008", "0x0080"),
-        'acquisition_date':("0x0008","0x0022"),
+        "acquisition_date": ("0x0008", "0x0022"),
         "name": ("0x0010", "0x0010"),
         "id": ("0x0010", "0x0020"),
         "dob": ("0x0010", "0x0030"),
@@ -130,7 +134,7 @@ def extract_participant_info(dcm_path):
     return returnDict
 
 
-#%% prepare conversion
+# %% prepare conversion
 def main():
     """Load arguments for main"""
     parser = argparse.ArgumentParser(
@@ -267,7 +271,12 @@ def main():
             # the whole folder becomes the id, since an id is provided but not found in participants.tsv
             # folder_id = os.path.basename(dicom_path)
             participants.append(
-                {"participan_id": args.id, "dcm_header_id":[],"folder_path": dicom_path}, ignore_index=True
+                {
+                    "participan_id": args.id,
+                    "dcm_header_id": [],
+                    "folder_path": dicom_path,
+                },
+                ignore_index=True,
             )
             dicom_path = opj(dicom_path, "../")
             subject = participants[participants.participant_id == args.id].iloc[0]
@@ -293,9 +302,9 @@ def main():
         conv = False
         ind = 0
         print(f"{directory}: Trying to find dcm files...")
-        for i,f in enumerate(filelist):
+        for i, f in enumerate(filelist):
             _, ext = os.path.splitext(f)
-            if ext == '.dcm' or ext == '':
+            if ext == ".dcm" or ext == "":
                 try:
                     pydi.dcmread(os.path.join(directory, f))
                     conv = True
@@ -308,7 +317,9 @@ def main():
 
         if conv:
             try:
-                dcm_info = extract_participant_info(os.path.join(directory, filelist[ind]))
+                dcm_info = extract_participant_info(
+                    os.path.join(directory, filelist[ind])
+                )
             except:
                 print(os.path.join(directory, filelist[ind]))
                 continue
@@ -318,13 +329,12 @@ def main():
 
         # here only if conv == True -> dcm_info is defined
 
-        print(f"{directory}: Searching for bids ID for", dcm_info['id'])
-        bids_id = find_corresponding_bids(dcm_info['id'], participants)
-        
-        session = re.sub(r'[^0-9]', '', dcm_info['acquisition_date'])
+        print(f"{directory}: Searching for bids ID for", dcm_info["id"])
+        bids_id = find_corresponding_bids(dcm_info["id"], participants)
+
+        session = re.sub(r"[^0-9]", "", dcm_info["acquisition_date"])
         if subject is not None:
             if bids_id in subject.participant_id:
-
                 if bids_id not in commands_dict.keys():
                     commands_dict[bids_id] = []
 
@@ -339,7 +349,8 @@ def main():
                     "-o",
                     out_path,
                     "--forceDcm2niix",
-                    "-s", session
+                    "-s",
+                    session,
                 ]
                 commandStrings.append(" ".join(cmd))
                 commands.append(cmd)
@@ -348,7 +359,7 @@ def main():
             if bids_id == "-1":
                 bids_id = "sub-" + patho + str(bids_id_count + 1).zfill(5)
                 bids_id_count += 1
-                print(f"{directory}: Could not find entry for", dcm_info['id'])
+                print(f"{directory}: Could not find entry for", dcm_info["id"])
                 print(f"{directory}: Creating new subject with BIDS id", bids_id)
 
                 # info = extract_participant_info(fname)
@@ -357,20 +368,20 @@ def main():
                 info["osepa_id"] = []
                 info["lab_id"] = []
                 info["neurorad_id"] = []
-                info["dcm_header_id"] = [dcm_info['id']]
+                info["dcm_header_id"] = [dcm_info["id"]]
                 participants = participants._append(info, ignore_index=True)
             else:
-                print(f"{directory}: Found entry for", dcm_info['id'], bids_id)
+                print(f"{directory}: Found entry for", dcm_info["id"], bids_id)
                 if (
-                    dcm_info['id']
+                    dcm_info["id"]
                     not in participants[participants.participant_id == bids_id]
                     .iloc[0]
                     .dcm_header_id
                 ):
                     participants[participants.participant_id == bids_id].iloc[
                         0
-                    ].dcm_header_id.append(dcm_info['id'])
-                
+                    ].dcm_header_id.append(dcm_info["id"])
+
             if bids_id not in commands_dict.keys():
                 commands_dict[bids_id] = []
 
@@ -385,21 +396,21 @@ def main():
                 "-o",
                 out_path,
                 "--forceDcm2niix",
-                "-s", session
+                "-s",
+                session,
             ]
             commandStrings.append(" ".join(cmd))
             commands.append(cmd)
             commands_dict[bids_id].append(cmd)
 
-
     # save participants.tsv back to output directory
-    print('Temporary saving participants.tsv to BIDS format... ')
+    print("Temporary saving participants.tsv to BIDS format... ")
 
     participants = ids2string(participants)
     participants.to_csv(opj(out_path, "participants.tsv"), sep="\t", index=False)
 
-    #%% start conversion
-    print('Starting conversion to BIDS format... ')
+    # %% start conversion
+    print("Starting conversion to BIDS format... ")
     if args.multiproc:
         num_cpus = multiprocessing.cpu_count()
         print("Running in parallel with", num_cpus, "cores.")
@@ -410,7 +421,7 @@ def main():
             start_proc(cmd)
 
     #
-    print('Final saving participants.tsv to BIDS format... ')
+    print("Final saving participants.tsv to BIDS format... ")
 
     fields = [
         "PatientName",
@@ -426,7 +437,8 @@ def main():
 
     for pat in participants.participant_id:
         info = {}
-        json_sidecars = glob.glob(opj(out_path, f"{pat}/anat/*.json"))
+        # find all json sidecars in out_path
+        json_sidecars = glob.glob(opj(out_path, pat, "*", "*", "*.json"))
         for field in fields:
             info[field] = []
         for js in json_sidecars:
