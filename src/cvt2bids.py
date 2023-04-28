@@ -400,8 +400,8 @@ def main():
                 "-s",
                 session,
             ]
-            commandStrings.append(" ".join(cmd))
-            commands.append(cmd)
+            commandStrings.append([" ".join(cmd)])
+            commands.append([cmd])
             commands_dict[bids_id].append(cmd)
 
     # save participants.tsv back to output directory
@@ -416,11 +416,11 @@ def main():
         num_cpus = multiprocessing.cpu_count()
         print("Running in parallel with", num_cpus, "cores.")
         p = multiprocessing.Pool(min(len(commands_dict), num_cpus))
+        print(list(commands_dict.values())[0])
         p.map(start_proc, commands_dict.values())
     else:
-        for cmd in commandStrings:
+        for cmd in commands:
             start_proc(cmd)
-
     #
     print("Final saving participants.tsv to BIDS format... ")
 
