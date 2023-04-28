@@ -278,7 +278,7 @@ def main():
                 },
                 ignore_index=True,
             )
-            dicom_path = opj(dicom_path, "../")
+            # dicom_path = opj(dicom_path, "../")
             subject = participants[participants.participant_id == args.id].iloc[0]
 
     participants = preproc_ids(participants)
@@ -369,6 +369,7 @@ def main():
                 info["lab_id"] = []
                 info["neurorad_id"] = []
                 info["dcm_header_id"] = [dcm_info["id"]]
+                # info["folder_path"] = [opj(directory.split()))]
                 participants = participants._append(info, ignore_index=True)
             else:
                 print(f"{directory}: Found entry for", dcm_info["id"], bids_id)
@@ -417,7 +418,7 @@ def main():
         p = multiprocessing.Pool(min(len(commands_dict), num_cpus))
         p.map(start_proc, commands_dict.values())
     else:
-        for cmd in commands:
+        for cmd in commandStrings:
             start_proc(cmd)
 
     #
