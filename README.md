@@ -10,7 +10,8 @@ Depends on a modified Version of [dcm2bids](https://github.com/1-w/Dcm2Bids) and
 
 ## Prerequisites
 
-dcm2niix v1.0.20201102
+Read about dcm2bids (https://github.com/UNFmontreal/Dcm2Bids) and dcm2niix (https://github.com/rordenlab/dcm2niix), it's important for converting the right dcm files to the right bids files! 
+
 
 Best to work in a virtual env, for example:
 
