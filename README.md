@@ -55,45 +55,17 @@ optional arguments:
 
   ``` -m, --multiproc   ```    control whether multi- or singlecore processing should be used
 
-### Workflow
+### Find sequences that were not included in the config
 
 1. Execute command
 
-2. ```cd <output directory>/tmp_dcm2bids/log```
+2. ```cd <output directory>```
 
-3. ```grep *.log -e "No Pairing" >> all_unpaired.txt```
+3.1 ```grep tmp_dcm2bids/sub-*/*.json -e SequenceName```
 
-4. Open python
+You can also check if there were several pairings (i.e. multiple entries in the config matched for the same file:
 
-5. 
-```
-#imports
-import pandas as pd
-import re
-
-#read unpaired sequence list
-df = pd.read_csv(<path to all_unpaired.txt>,header=None)
-
-#clean the list
-df['sequence_names'] = df[0].apply(lambda x: x.split('  <-  ')[1])
-print(df.sequence_names.unique())
-df['sequence_names'] = df['sequence_names'].apply(lambda x: re.sub(r'^[0-9]*_','',x))
-df['sequence_names'] = df['sequence_names'].apply(lambda x: re.sub(r'^[0-9]*.?_','',x))
-df['sequence_names'] = df['sequence_names'].apply(lambda x: re.sub(r'_[0-9]*$','',x))
-
-#only use unique sequence names
-unmatched_sequences = df.sequence_names.unique()
-
-#refine template matching to sequence names
-#add the matched templates to the config file like described below
-
-new_template = r'.*preop_ep2d_diff_b0_p4_17_preop_ep2d_diff_b0_p4.*'
-unmatched_sequences = unmatched_sequences[
-  unmatched_sequences.apply(lambda x: not bool(re.search(new_template,x)) )
-]
-
-#repeat until unmatched_sequences is empty
-```
+3.2 ```grep tmp_dcm2bids/log/*.log -e "Several Pairing"```
 
 Please put the sequences like into the existing config repo like described here:
 https://gitlab.com/lab_tni/projects/lab2bids_configs
