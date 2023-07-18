@@ -13,6 +13,8 @@ from pkg_resources import require
 import json
 import re
 
+import dcm2bids
+
 
 # %%
 def find_corresponding_bids(id_, df):
@@ -330,7 +332,30 @@ def main():
         # here only if conv == True -> dcm_info is defined
 
         print(f"{directory}: Searching for bids ID for", dcm_info["id"])
-        bids_id = find_corresponding_bids(dcm_info["id"], participants)
+
+        # greifswald addon
+        if dcm_info["id"] == "":
+            print(f"{directory}: Could not find ID for", dcm_info["id"])
+            continue
+
+        # if "_" not in dcm_info["id"]:
+        # print(f"{directory}: Weird ID for", dcm_info["id"])
+        # continue
+
+        id_ = dcm_info["id"]  # .split("_")[0]
+        # print(dcm_info["id"])
+        # if id_ != "ANONYM-EPM00R":
+        #     try:
+        #         acq = dcm_info["id"].split("_")[1]
+        #     except:
+        #         print("error", dcm_info["id"])
+        #         sys.exit(1)
+        # else:
+        #     id_ = "EPM00R"
+        # not greifswald
+        # id_ = dcm_info["id"]
+
+        bids_id = find_corresponding_bids(id_, participants)
 
         session = re.sub(r"[^0-9]", "", dcm_info["acquisition_date"])
         if subject is not None:
@@ -359,7 +384,7 @@ def main():
             if bids_id == "-1":
                 bids_id = "sub-" + patho + str(bids_id_count + 1).zfill(5)
                 bids_id_count += 1
-                print(f"{directory}: Could not find entry for", dcm_info["id"])
+                print(f"{directory}: Could not find entry for", id_)
                 print(f"{directory}: Creating new subject with BIDS id", bids_id)
 
                 # info = extract_participant_info(fname)
@@ -368,20 +393,20 @@ def main():
                 info["osepa_id"] = []
                 info["lab_id"] = []
                 info["neurorad_id"] = []
-                info["dcm_header_id"] = [dcm_info["id"]]
+                info["dcm_header_id"] = [id_]
                 # info["folder_path"] = [opj(directory.split()))]
                 participants = participants._append(info, ignore_index=True)
             else:
-                print(f"{directory}: Found entry for", dcm_info["id"], bids_id)
+                print(f"{directory}: Found entry for", id_, bids_id)
                 if (
-                    dcm_info["id"]
+                    id_
                     not in participants[participants.participant_id == bids_id]
                     .iloc[0]
                     .dcm_header_id
                 ):
                     participants[participants.participant_id == bids_id].iloc[
                         0
-                    ].dcm_header_id.append(dcm_info["id"])
+                    ].dcm_header_id.append(id_)
 
             if bids_id not in commands_dict.keys():
                 commands_dict[bids_id] = []
@@ -428,6 +453,7 @@ def main():
         "PatientName",
         "PatientID",
         "PatientBirthDate",
+        "PatientAge",
         "PatientSex",
         "AcquisitionDateTime",
         "DeviceSerialNumber",
@@ -447,11 +473,14 @@ def main():
             with open(js) as jf:
                 data = json.load(jf)
             for field in fields:
-                tmpvar = data[field]
-                if field == "AcquisitionDateTime":
-                    tmpvar = tmpvar.split("T")[0]
-                if tmpvar not in info[field]:
-                    info[field].append(tmpvar)
+                try:
+                    tmpvar = data[field]
+                    if field == "AcquisitionDateTime":
+                        tmpvar = tmpvar.split("T")[0]
+                    if tmpvar not in info[field]:
+                        info[field].append(tmpvar)
+                except:
+                    continue
 
         for field in fields:
             info[field] = ";".join(info[field])
