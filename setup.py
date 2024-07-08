@@ -22,7 +22,7 @@ DISTNAME = "cvt2bids"
 VERSION = "0.9.1"
 ENTRY_POINTS = {
     "console_scripts": [
-        "cvt2bids = src.cvt2bids:main",
+        "cvt2bids = src.cvt2bids:main_wrapper",
     ],
 }
 AUTHOR = "Lennart Walger"
