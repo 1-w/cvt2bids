@@ -9,7 +9,7 @@ dependencies:
   - ipykernel
   - python=3
   - dcm2niix
-  - dcm2bids
+  - dcm2bids=2.1.9
   - pandas
   - pydicom
   - pip
