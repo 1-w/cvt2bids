@@ -104,6 +104,7 @@ def extract_participant_info(dcm_path):
     infotags = {
         "institution_name": ("0x0008", "0x0080"),
         "acquisition_date": ("0x0008", "0x0022"),
+        "content_date": ("0x0008", "0x0023"),
         "name": ("0x0010", "0x0010"),
         "id": ("0x0010", "0x0020"),
         "dob": ("0x0010", "0x0030"),
@@ -137,116 +138,29 @@ def extract_participant_info(dcm_path):
 
 
 # %% prepare conversion
-def main():
-    """Load arguments for main"""
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=""" Convert DICOMS to NIFTIS and back, with possible defacing and header annonymization {}""".format(
-            require("dcm2bids")[0].version  # TODO
-        ),
-        epilog=""" Documentation not yet at https://github.com/1-w/cvt2bids """,
-    )
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        help="Display verison.",
-        version=require("cvt2bids")[0].version,
-    )
-
-    parser.add_argument(
-        "-d",
-        "--dicom_path",
-        required=True,
-        help="BIDS conform dir containing all relevant niftis. participants.tsv needs to allow a mapping between the files in sourcedata and the participant_ids.",
-    )
-
-    parser.add_argument(
-        "-o",
-        "--out_path",
-        required=True,
-        help="provide output directory path. If it does not include a participants.tsv file, a new one will be generated from dicom data",
-    )
-
-    parser.add_argument(
-        "-c",
-        "--config_path",
-        required=True,
-        help="provide the path to a valid config file.",
-    )
-
-    parser.add_argument(
-        "-i",
-        "--id",
-        required=False,
-        help="Single participant_id. Only this id will be processed from participants.tsv file. If no participants.tsv file is provided, all found DICOMS will be stored under this id",
-    )  # TODO
-
-    parser.add_argument(
-        "-p",
-        "--participants_file",
-        required=False,
-        help="if participants.tsv file included somewhere other than out_path",
-    )
-
-    # parser.add_argument(
-    #     "-s",
-    #     "--subfolder",
-    #     default="",
-    #     required=False,
-    #     help="if only a specific subfolder in a subjects directory should be searched for DICOMS",
-    # )
-
-    parser.add_argument(
-        "-pat",
-        "--pathology",
-        default="",
-        required=False,
-        help="specify pathology for pat ID",
-    )
-
-    parser.add_argument(
-        "--dcm",
-        required=False,
-        help="""
-        convert NIFTIS back to DICOMS, options: a = anonymize, d = defaced""",
-    )
-
-    # unfortunately not supported currently by dcm2bids/dcm2niix .. but we can at least parallelise subjects
-    parser.add_argument(
-        "-m",
-        "--multiproc",
-        action="store_true",
-        help="""
-        control whether multi- or singlecore processing should be used""",
-    )
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        return 0
-
-    try:
-        args = parser.parse_args()
-    except argparse.ArgumentError:
-        parser.print_usage()
-        exit(-1)
-
-    # args =parser.parse_args(args, namespace = v)
-
+def main(
+    dicom_path,
+    out_path,
+    config_path,
+    id_=None,
+    participants_file=None,
+    pathology="",
+    multiproc=False,
+):
     welcome_str = "cvt2bids " + require("cvt2bids")[0].version
     welcome_decor = "-" * len(welcome_str)
     print(welcome_decor + "\n" + welcome_str + "\n" + welcome_decor)
 
-    dicom_path = convert2abs(args.dicom_path)
-    out_path = convert2abs(args.out_path)
+    dicom_path = convert2abs(dicom_path)
+    out_path = convert2abs(out_path)
 
-    patho = args.pathology
+    patho = pathology
     os.makedirs(out_path, exist_ok=True)
 
-    config_file_path = convert2abs(args.config_path)
+    config_file_path = convert2abs(config_path)
 
-    if args.participants_file:
-        participants_file = convert2abs(args.participants_file)
+    if participants_file:
+        participants_file = convert2abs(participants_file)
         participants = pd.read_csv(participants_file, sep="\t", dtype=object)
     else:
         if os.path.isfile(opj(out_path, "participants.tsv")):
@@ -264,24 +178,24 @@ def main():
         participants["dcm_header_id"] = []
 
     subject = None
-    if args.id:
-        if args.id in participants.participant_id.values:
-            subject = participants[participants.participant_id == args.id].iloc[0]
+    if id_:
+        if id_ in participants.participant_id.values:
+            subject = participants[participants.participant_id == id_].iloc[0]
 
         else:
-            print("Did not find participant_id", args.id)
+            print("Did not find participant_id", id_)
             # the whole folder becomes the id, since an id is provided but not found in participants.tsv
             # folder_id = os.path.basename(dicom_path)
             participants.append(
                 {
-                    "participan_id": args.id,
+                    "participan_id": id_,
                     "dcm_header_id": [],
                     "folder_path": dicom_path,
                 },
                 ignore_index=True,
             )
             # dicom_path = opj(dicom_path, "../")
-            subject = participants[participants.participant_id == args.id].iloc[0]
+            subject = participants[participants.participant_id == id].iloc[0]
 
     participants = preproc_ids(participants)
 
@@ -295,10 +209,6 @@ def main():
     # dcm2nii conversion
     for directory, subdirlist, filelist in os.walk(dicom_path):
         print(directory)
-        # if args.subfolder == "":
-        #     subfolders = os.listdir(opj(dicom_path, name))
-        # else:
-        #     subfolders = [args.subfolder]
 
         # find all subfolders containing dicoms:
         conv = False
@@ -338,26 +248,16 @@ def main():
             print(f"{directory}: Could not find ID for", dcm_info["id"])
             continue
 
-        # if "_" not in dcm_info["id"]:
-        # print(f"{directory}: Weird ID for", dcm_info["id"])
-        # continue
-
         id_ = dcm_info["id"]  # .split("_")[0]
-        # print(dcm_info["id"])
-        # if id_ != "ANONYM-EPM00R":
-        #     try:
-        #         acq = dcm_info["id"].split("_")[1]
-        #     except:
-        #         print("error", dcm_info["id"])
-        #         sys.exit(1)
-        # else:
-        #     id_ = "EPM00R"
-        # not greifswald
-        # id_ = dcm_info["id"]
 
         bids_id = find_corresponding_bids(id_, participants)
 
-        session = re.sub(r"[^0-9]", "", dcm_info["acquisition_date"])
+        if "acquisition_date" in dcm_info:
+
+            session = re.sub(r"[^0-9]", "", dcm_info["acquisition_date"])
+        else:
+            session = re.sub(r"[^0-9]", "", dcm_info["content_date"])
+
         if subject is not None:
             if bids_id in subject.participant_id:
                 if bids_id not in commands_dict.keys():
@@ -373,7 +273,7 @@ def main():
                     config_file_path,
                     "-o",
                     out_path,
-                    "--forceDcm2niix",
+                    "--force_dcm2bids",
                     "-s",
                     session,
                 ]
@@ -421,7 +321,7 @@ def main():
                 config_file_path,
                 "-o",
                 out_path,
-                "--forceDcm2niix",
+                "--force_dcm2bids",
                 "-s",
                 session,
             ]
@@ -437,7 +337,7 @@ def main():
 
     # %% start conversion
     print("Starting conversion to BIDS format... ")
-    if args.multiproc:
+    if multiproc:
         num_cpus = multiprocessing.cpu_count()
         print("Running in parallel with", num_cpus, "cores.")
         p = multiprocessing.Pool(min(len(commands_dict), num_cpus))
@@ -496,12 +396,101 @@ def main():
 
     print("Finished!")
 
-    # nii2dcm conversion
-    if not args.dcm:
-        return
+
+# %%
+
+
+def main_wrapper():
+    """Load arguments for main"""
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=""" Convert DICOMS to NIFTIS and back, with possible defacing and header annonymization {}""".format(
+            require("dcm2bids")[0].version  # TODO
+        ),
+        epilog=""" Documentation not yet at https://github.com/1-w/cvt2bids """,
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Display verison.",
+        version=require("cvt2bids")[0].version,
+    )
+
+    parser.add_argument(
+        "-d",
+        "--dicom_path",
+        required=True,
+        help="BIDS conform dir containing all relevant niftis. participants.tsv needs to allow a mapping between the files in sourcedata and the participant_ids.",
+    )
+
+    parser.add_argument(
+        "-o",
+        "--out_path",
+        required=True,
+        help="provide output directory path. If it does not include a participants.tsv file, a new one will be generated from dicom data",
+    )
+
+    parser.add_argument(
+        "-c",
+        "--config_path",
+        required=True,
+        help="provide the path to a valid config file.",
+    )
+
+    parser.add_argument(
+        "-i",
+        "--id",
+        required=False,
+        help="Single participant_id. Only this id will be processed from participants.tsv file. If no participants.tsv file is provided, all found DICOMS will be stored under this id",
+    )  # TODO
+
+    parser.add_argument(
+        "-p",
+        "--participants_file",
+        required=False,
+        help="if participants.tsv file included somewhere other than out_path",
+    )
+
+    parser.add_argument(
+        "-pat",
+        "--pathology",
+        default="",
+        required=False,
+        help="specify pathology for pat ID",
+    )
+
+    # unfortunately not supported currently by dcm2bids/dcm2niix .. but we can at least parallelise subjects
+    parser.add_argument(
+        "-m",
+        "--multiproc",
+        action="store_true",
+        help="""
+        control whether multi- or singlecore processing should be used""",
+    )
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return 0
+
+    try:
+        args = parser.parse_args()
+    except argparse.ArgumentError:
+        parser.print_usage()
+        return -1
+
+    # args =parser.parse_args(args, namespace = v)
+    return main(
+        args.dicom_path,
+        args.out_path,
+        args.config_path,
+        args.id,
+        args.participants_file,
+        args.pathology,
+        args.multiproc,
+    )
 
 
 # %%
 if __name__ == "__main__":
-    sys.exit(main())
-# %%
+    sys.exit(main_wrapper())
