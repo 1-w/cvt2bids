@@ -253,10 +253,12 @@ def main(
         bids_id = find_corresponding_bids(id_, participants)
 
         if "acquisition_date" in dcm_info:
-
             session = re.sub(r"[^0-9]", "", dcm_info["acquisition_date"])
-        else:
+        elif "content_date" in dcm_info:
             session = re.sub(r"[^0-9]", "", dcm_info["content_date"])
+        else:
+            print(f"{directory}: Could not find session for", id_)
+            session = "1"
 
         if subject is not None:
             if bids_id in subject.participant_id:
