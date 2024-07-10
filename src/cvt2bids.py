@@ -126,7 +126,11 @@ def extract_participant_info(dcm_path):
     for key in infotags:
         tg = pydi.tag.Tag(infotags[key])
         if tg in dcm:
-            if str(dcm[tg].value) not in subject_info[key]:
+            if (
+                str(dcm[tg].value) not in subject_info[key]
+                and str(dcm[tg].value) != ""
+                and str(dcm[tg].value) is not None
+            ):
                 subject_info[key].append(str(dcm[tg].value))
 
     returnDict = {}
@@ -251,15 +255,15 @@ def main(
         id_ = dcm_info["id"]  # .split("_")[0]
 
         bids_id = find_corresponding_bids(id_, participants)
-
-        if "acquisition_date" in dcm_info:
+        session = "tmp"
+        if "acquisition_date" in dcm_info and dcm_info["acquisition_date"] != "":
             session = re.sub(r"[^0-9]", "", dcm_info["acquisition_date"])
-        elif "content_date" in dcm_info:
+        elif "content_date" in dcm_info and dcm_info["content_date"] != "":
             session = re.sub(r"[^0-9]", "", dcm_info["content_date"])
         else:
             print(f"{directory}: Could not find session for", id_)
             session = "1"
-
+        print(f"{directory}: Found session", session, "for", id_)
         if subject is not None:
             if bids_id in subject.participant_id:
                 if bids_id not in commands_dict.keys():
@@ -275,7 +279,7 @@ def main(
                     config_file_path,
                     "-o",
                     out_path,
-                    "--force_dcm2bids",
+                    "--forceDcm2niix",
                     "-s",
                     session,
                 ]
@@ -323,7 +327,7 @@ def main(
                 config_file_path,
                 "-o",
                 out_path,
-                "--force_dcm2bids",
+                "--forceDcm2niix",
                 "-s",
                 session,
             ]
